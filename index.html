@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instax Camera</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        .instax-font { font-family: 'Quicksand', sans-serif; }
+        .handwriting { font-family: 'Caveat', cursive; }
+
+        @keyframes eject {
+            0% { transform: translateY(-100%) scale(0.9); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        @keyframes develop {
+            0% { filter: brightness(0.1) grayscale(1) contrast(2); }
+            50% { filter: brightness(0.5) grayscale(0.5); }
+            100% { filter: brightness(1) grayscale(0); }
+        }
+
+        .developing-photo {
+            animation: develop 6s ease-out forwards;
+        }
+
+        .photo-slide-enter {
+            animation: eject 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* Hide scrollbar for clean look */
+        body::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-stone-100 flex flex-col items-center p-4 font-sans selection:bg-pink-200">
+
+    <!-- Header -->
+    <div class="w-full max-w-md flex justify-between items-center mb-6 mt-2">
+        <h1 class="text-2xl font-bold text-stone-800 instax-font flex items-center gap-2">
+            <!-- Camera Icon SVG -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            Instax
+        </h1>
+        <div id="status-text" class="text-xs text-stone-500 instax-font">Ready to snap</div>
+    </div>
+
+    <!-- Camera Unit Container -->
+    <div class="relative z-20 w-full max-w-[340px]">
+        
+        <!-- The Camera Body -->
+        <div class="relative bg-teal-200 rounded-[40px] p-4 pb-12 shadow-xl border-b-8 border-r-8 border-teal-300 transition-transform duration-100 active:scale-[0.99]">
+            
+            <!-- Flash Burst Overlay -->
+            <div id="flash-overlay" class="absolute inset-0 z-50 bg-white rounded-[40px] opacity-0 pointer-events-none mix-blend-overlay transition-opacity duration-200"></div>
+
+            <!-- Top Decor Strip -->
+            <div class="absolute top-6 left-6 right-6 h-3 bg-teal-300/50 rounded-full"></div>
+
+            <!-- Viewfinder Area -->
+            <div class="relative mt-8 mb-6 mx-auto w-64 h-64 bg-stone-900 rounded-full border-[12px] border-white shadow-inner overflow-hidden group">
+                <!-- Lens Reflection -->
+                <div class="absolute top-4 right-8 w-12 h-8 bg-white/10 rounded-full transform -rotate-45 z-20 blur-sm"></div>
+                
+                <!-- Video Feed -->
+                <video id="camera-feed" autoplay playsinline muted class="w-full h-full object-cover transform scale-x-[-1]"></video>
+                
+                <!-- Error Message (Hidden by default) -->
+                <div id="camera-error" class="hidden absolute inset-0 flex flex-col items-center justify-center text-stone-400 bg-stone-900 z-30">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16"/><path d="M9.5 4h5L17 7h3"/><path d="M14.121 15.121A3 3 0 1 1 9.88 10.88"/></svg>
+                    <p class="text-xs mt-2 text-center px-4">Camera Access Denied</p>
+                </div>
+
+                <!-- Switch Camera Button -->
+                <button id="switch-btn" class="absolute bottom-4 right-4 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 backdrop-blur-md z-30 cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                </button>
+            </div>
+
+            <!-- Camera Controls -->
+            <div class="flex justify-between items-center px-6 mt-4">
+                <!-- Viewfinder Window (Visual only) -->
+                <div class="w-12 h-12 bg-stone-800 rounded-xl border-4 border-stone-300 shadow-inner flex items-center justify-center">
+                    <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                </div>
+
+                <!-- Shutter Button -->
+                <button id="shutter-btn" class="relative group w-20 h-20 rounded-full bg-red-500 border-4 border-red-600 shadow-[0_4px_0_rgb(185,28,28)] active:shadow-none active:translate-y-1 active:border-t-4 transition-all flex items-center justify-center cursor-pointer">
+                    <div class="w-16 h-16 rounded-full border-2 border-red-300/30"></div>
+                </button>
+
+                <!-- Flash / Decor -->
+                <div class="w-12 h-12 bg-stone-300 rounded-full border-2 border-stone-400 flex items-center justify-center shadow-inner">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                </div>
+            </div>
+
+            <!-- Output Slot (Visual) -->
+            <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 w-32 h-4 bg-stone-800 rounded-full z-0"></div>
+        </div>
+
+        <!-- Hidden Canvas for Processing -->
+        <canvas id="process-canvas" class="hidden"></canvas>
+    </div>
+
+    <!-- The Photo Stream (Gallery) -->
+    <div id="photo-container" class="w-full max-w-md mt-12 pb-20 px-4 flex flex-col gap-8 z-10">
+        <div id="empty-state" class="text-center text-stone-400 py-8 flex flex-col items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-2 opacity-50"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            <p class="instax-font">No photos yet. Click the red button!</p>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 w-full text-center py-2 bg-stone-100/80 backdrop-blur text-xs text-stone-400 instax-font">
+        Images processed locally in browser
+    </div>
+
+    <script>
+        // Logic Script
+        const video = document.getElementById('camera-feed');
+        const canvas = document.getElementById('process-canvas');
+        const shutterBtn = document.getElementById('shutter-btn');
+        const flashOverlay = document.getElementById('flash-overlay');
+        const photoContainer = document.getElementById('photo-container');
+        const emptyState = document.getElementById('empty-state');
+        const switchBtn = document.getElementById('switch-btn');
+        const errorMsg = document.getElementById('camera-error');
+        
+        let stream = null;
+        let facingMode = 'user';
+        let isPrinting = false;
+
+        // 1. Initialize Camera
+        async function startCamera() {
+            try {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                
+                const constraints = {
+                    video: {
+                        facingMode: facingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                errorMsg.classList.add('hidden');
+            } catch (err) {
+                console.error("Camera Error:", err);
+                errorMsg.classList.remove('hidden');
+            }
+        }
+
+        // Start on load
+        startCamera();
+
+        // Switch Camera Handler
+        switchBtn.addEventListener('click', () => {
+            facingMode = facingMode === 'user' ? 'environment' : 'user';
+            // Mirror effect logic
+            if (facingMode === 'user') {
+                video.classList.add('scale-x-[-1]');
+            } else {
+                video.classList.remove('scale-x-[-1]');
+            }
+            startCamera();
+        });
+
+        // 2. Take Photo Logic
+        shutterBtn.addEventListener('click', () => {
+            if (isPrinting || !stream) return;
+
+            // Trigger Flash
+            flashOverlay.classList.remove('opacity-0');
+            setTimeout(() => flashOverlay.classList.add('opacity-0'), 200);
+
+            // Capture Frame
+            const size = Math.min(video.videoWidth, video.videoHeight);
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            const startX = (video.videoWidth - size) / 2;
+            const startY = (video.videoHeight - size) / 2;
+
+            // Mirror logic for canvas
+            ctx.translate(size, 0);
+            ctx.scale(-1, 1); 
+            if (facingMode === 'environment') {
+                ctx.translate(size, 0);
+                ctx.scale(-1, 1);
+            }
+
+            ctx.drawImage(video, startX, startY, size, size, 0, 0, size, size);
+
+            const rawImage = canvas.toDataURL('image/jpeg', 0.9);
+            const timestamp = new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const photoId = Date.now();
+
+            // Start Printing Animation
+            isPrinting = true;
+
+            setTimeout(() => {
+                if (emptyState) emptyState.style.display = 'none';
+                addPhotoToDOM(photoId, rawImage, timestamp);
+                isPrinting = false;
+            }, 600);
+        });
+
+        // 3. Create DOM Elements for Photo
+        function addPhotoToDOM(id, src, date) {
+            const wrapper = document.createElement('div');
+            // Random rotation for messy pile look
+            const rotate = (photoContainer.children.length % 2 === 0) ? '-2deg' : '2deg';
+            
+            wrapper.className = `bg-white p-4 pb-12 shadow-xl transform transition-all duration-500 hover:rotate-0 hover:scale-[1.02] photo-slide-enter`;
+            wrapper.style.transform = `rotate(${rotate})`;
+
+            wrapper.innerHTML = `
+                <div class="aspect-[4/5] bg-stone-100 overflow-hidden relative shadow-inner ring-1 ring-black/5">
+                    <img src="${src}" class="w-full h-full object-cover developing-photo" alt="Memory">
+                </div>
+                <div class="mt-4 flex justify-between items-end px-2">
+                    <div class="text-stone-600 text-xl handwriting transform -rotate-1">${date}</div>
+                    <button onclick="downloadPolaroid('${src}', '${date}', ${id})" class="text-stone-400 hover:text-teal-600 transition-colors p-2" title="Download">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                    </button>
+                </div>
+            `;
+
+            // Insert at top
+            photoContainer.insertBefore(wrapper, photoContainer.firstChild);
+        }
+
+        // 4. Download Logic
+        window.downloadPolaroid = (src, date, id) => {
+            const compositeCanvas = document.createElement('canvas');
+            const ctx = compositeCanvas.getContext('2d');
+            const img = new Image();
+            
+            const frameWidth = 800;
+            const frameHeight = 960;
+            const innerSize = 720;
+            const borderTop = 40;
+            const borderSide = 40;
+
+            compositeCanvas.width = frameWidth;
+            compositeCanvas.height = frameHeight;
+
+            // Draw Paper
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, frameWidth, frameHeight);
+            
+            // Texture
+            ctx.fillStyle = '#f8f8f8';
+            ctx.fillRect(0, 0, frameWidth, frameHeight);
+            ctx.shadowColor = "rgba(0,0,0,0.1)";
+            ctx.shadowBlur = 20;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, frameWidth, frameHeight);
+            ctx.shadowBlur = 0;
+
+            img.onload = () => {
+                ctx.drawImage(img, borderSide, borderTop, innerSize, innerSize);
+                
+                ctx.fillStyle = '#444';
+                ctx.font = '40px cursive'; 
+                ctx.textAlign = 'center';
+                ctx.fillText(date, frameWidth / 2, frameHeight - 50);
+
+                const link = document.createElement('a');
+                link.download = `instax-${id}.png`;
+                link.href = compositeCanvas.toDataURL('image/png');
+                link.click();
+            };
+            img.src = src;
+        };
+    </script>
+</body>
+</html>
